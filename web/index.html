@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>云澜市调查加权统计系统（虚构数据演示）</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header>
+  <h1>调查加权统计系统 <span class="tag">虚构数据演示</span></h1>
+  <div id="health" class="health"></div>
+</header>
+
+<div class="honesty-banner">
+  ⚠️ 本系统所有统计结论只针对给定样本设计与已发布基准的事后分层加权；
+  无法估计层的人口不进入估计；不对总体代表性作额外主张。数据为虚构。
+</div>
+
+<nav id="tabs">
+  <button data-tab="overview" class="active">概览</button>
+  <button data-tab="ingest">基准与样本</button>
+  <button data-tab="runs">权重计算</button>
+  <button data-tab="reports">报表</button>
+  <button data-tab="compare">修订比较</button>
+  <button data-tab="download">下载明细</button>
+</nav>
+
+<main>
+  <section id="tab-overview" class="tab active">
+    <h2>当前发布快照</h2>
+    <div id="snapshot-info" class="card">加载中…</div>
+    <h2>总体估计（总表）</h2>
+    <div id="master-report" class="card">加载中…</div>
+  </section>
+
+  <section id="tab-ingest" class="tab">
+    <div class="columns">
+      <div class="card">
+        <h3>发布人口基准版本</h3>
+        <p class="hint">CSV 列：region,sex,age_group,population。上传即发布为新版本，旧版本保留可追溯。</p>
+        <label>版本名 <input id="bench-name" placeholder="v2026B"></label>
+        <label>备注 <input id="bench-note" placeholder="2026 年人口修订"></label>
+        <input type="file" id="bench-file" accept=".csv">
+        <button id="bench-upload">发布基准</button>
+        <pre id="bench-result"></pre>
+        <h4>已有版本</h4>
+        <div id="benchmark-list"></div>
+      </div>
+      <div class="card">
+        <h3>补报样本批次</h3>
+        <p class="hint">CSV 列：respondent_id,region,sex,age_group,satisfaction,used_service。每次上传是一个新批次，原批次不修改。</p>
+        <label>来源 <input id="sample-source" placeholder="2026年9月补报"></label>
+        <label>备注 <input id="sample-note" placeholder="第三批"></label>
+        <input type="file" id="sample-file" accept=".csv">
+        <button id="sample-upload">提交补报</button>
+        <pre id="sample-result"></pre>
+        <h4>已接收批次</h4>
+        <div id="batch-list"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-runs" class="tab">
+    <div class="card">
+      <h3>启动权重计算</h3>
+      <label>模式
+        <select id="run-mode">
+          <option value="full">全量重算（所有层）</option>
+          <option value="affected">增量重算（只重算受影响层所在区县）</option>
+        </select>
+      </label>
+      <label>基准版本 <select id="run-benchmark"></select></label>
+      <details>
+        <summary>高级参数</summary>
+        <label>最小层样本量 <input id="cfg-min-cell" type="number" value="5" min="1"></label>
+        <label>修剪下分位 <input id="cfg-trim-lo" type="number" value="0.02" step="0.01" min="0" max="1"></label>
+        <label>修剪上分位 <input id="cfg-trim-hi" type="number" value="0.98" step="0.01" min="0" max="1"></label>
+        <label>每 chunk 延迟(ms)（演示中断用） <input id="cfg-delay" type="number" value="150" min="0"></label>
+      </details>
+      <button id="run-start">启动计算</button>
+      <pre id="run-start-result"></pre>
+    </div>
+    <div class="card">
+      <h3>运行列表 <button id="runs-refresh" class="small">刷新</button></h3>
+      <div id="runs-list"></div>
+    </div>
+  </section>
+
+  <section id="tab-reports" class="tab">
+    <div class="card">
+      <h3>分组报表</h3>
+      <label>维度
+        <select id="report-dim">
+          <option value="region">区县</option>
+          <option value="sex">性别</option>
+          <option value="age_group">年龄段</option>
+        </select>
+      </label>
+      <div id="group-report"></div>
+    </div>
+    <div class="card">
+      <h3>无法估计的层（明确列出，人口不计入估计）</h3>
+      <div id="unestimable-report"></div>
+    </div>
+  </section>
+
+  <section id="tab-compare" class="tab">
+    <div class="card">
+      <h3>比较两次运行的修订影响</h3>
+      <label>修订前 <select id="compare-from"></select></label>
+      <label>修订后 <select id="compare-to"></select></label>
+      <button id="compare-run">比较</button>
+      <div id="compare-result"></div>
+    </div>
+  </section>
+
+  <section id="tab-download" class="tab">
+    <div class="card">
+      <h3>下载明细（当前发布快照）</h3>
+      <p>记录级权重明细含每条的权重依据：估计单元、单元样本量、基准人口、原始权重、是否修剪、基准版本、计算时间。</p>
+      <p>
+        <a class="button" href="#" id="dl-records">⬇ 记录级权重明细 (CSV)</a>
+        <a class="button" href="#" id="dl-strata">⬇ 估计单元 / 无法估计层明细 (CSV)</a>
+      </p>
+      <p class="hint">也可指定运行：<code>/api/download/record_weights.csv?run_id=N</code></p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  weightkit 演示项目 · 样本接收 :8001 / 权重计算 :8002 / 报表 :8003 三个服务独立运行
+</footer>
+<script src="/app.js"></script>
+</body>
+</html>
